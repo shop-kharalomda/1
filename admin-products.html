@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المنتجات</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+        }
+        .header {
+            background-color: #333;
+            color: white;
+            padding: 10px 0;
+        }
+        nav a {
+            color: white;
+            margin: 0 10px;
+            text-decoration: none;
+        }
+        .products-section {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .product-item {
+            width: 200px;
+            height: 300px;
+            padding: 10px;
+            margin: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .product-item h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .product-item img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+        .buttons-container {
+            display: flex;
+            gap: 10px;
+        }
+        .product-item button {
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .product-item .edit-btn {
+            background-color: yellow;
+            color: black;
+        }
+        .product-item .edit-btn:hover {
+            background-color: #ffeb3b;
+        }
+        .product-item .delete-btn {
+            background-color: red;
+            color: white;
+        }
+        .product-item .delete-btn:hover {
+            background-color: #f44336;
+        }
+        .add-product-section {
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>إدارة المنتجات</h1>
+        <nav>
+            <a href="admin-orders.html">الطلبات</a>
+            <a href="logout.html">تسجيل الخروج</a>
+        </nav>
+    </header>
+
+    <section class="add-product-section">
+        <h2 id="formTitle">إضافة منتج جديد</h2>
+        <form id="productForm">
+            <input type="hidden" id="productId">
+            <input type="text" id="productName" placeholder="اسم المنتج" required><br><br>
+            <input type="number" id="productPrice" placeholder="سعر الكيلو (بالجنيه)" required><br><br>
+            <input type="file" id="productImage" accept="image/*" required><br><br>
+            <button type="submit">حفظ المنتج</button>
+        </form>
+    </section>
+
+    <section class="products-section" id="productsList">
+        <h2>قائمة المنتجات</h2>
+        <!-- سيتم ملء هذه المنطقة بالمنتجات عبر جافا سكربت -->
+    </section>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCs7j4K_Ds1eWBWm_Kf2x5WoUXKcxXo1e4",
+            authDomain: "kokooo-243be.firebaseapp.com",
+            projectId: "kokooo-243be",
+            storageBucket: "kokooo-243be.firebasestorage.app",
+            messagingSenderId: "348661733475",
+            appId: "1:348661733475:web:e0c202f269a308bd0fc056",
+            measurementId: "G-9G479CQ2N7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // عرض المنتجات عند تحميل الصفحة
+        window.onload = displayProducts;
+
+        async function displayProducts() {
+            const productsList = document.getElementById('productsList');
+            productsList.innerHTML = ''; // مسح القائمة قبل التحديث
+            const querySnapshot = await getDocs(collection(db, "products"));
+            querySnapshot.forEach((docSnap) => {
+                const product = docSnap.data();
+                const productItem = document.createElement('div');
+                productItem.classList.add('product-item');
+                productItem.innerHTML = `
+                    <h3>${product.name}</h3>
+                    <p>سعر الكيلو: ${product.price} جنيه</p>
+                    ${product.image ? `<img src="${product.image}" alt="${product.name}">` : ''}
+                    <div class="buttons-container">
+                        <button class="edit-btn" onclick="editProduct('${docSnap.id}', '${product.name}', ${product.price}, '${product.image || ''}')">تعديل</button>
+                        <button class="delete-btn" onclick="deleteProduct('${docSnap.id}')">حذف</button>
+                    </div>
+                `;
+                productsList.appendChild(productItem);
+            });
+        }
+
+        // إضافة أو تعديل منتج
+        document.getElementById('productForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const productId = document.getElementById('productId').value;
+            const productName = document.getElementById('productName').value;
+            const productPrice = document.getElementById('productPrice').value;
+            const productImageInput = document.getElementById('productImage').files[0];
+
+            if (!productName || !productPrice || !productImageInput) {
+                alert("يرجى ملء جميع الحقول المطلوبة.");
+                return;
+            }
+
+            const productData = {
+                name: productName,
+                price: parseFloat(productPrice),
+            };
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                productData.image = e.target.result;
+
+                if (productId) {
+                    await updateDoc(doc(db, "products", productId), productData);
+                    alert('تم تحديث المنتج');
+                } else {
+                    await addDoc(collection(db, "products"), productData);
+                    alert('تم إضافة المنتج');
+                }
+                resetForm();
+                displayProducts();
+            };
+            reader.readAsDataURL(productImageInput);
+        });
+
+        window.editProduct = function (id, name, price, image) {
+            document.getElementById('formTitle').innerText = 'تعديل المنتج';
+            document.getElementById('productId').value = id;
+            document.getElementById('productName').value = name;
+            document.getElementById('productPrice').value = price;
+            document.getElementById('productImage').value = '';
+        };
+
+        function resetForm() {
+            document.getElementById('formTitle').innerText = 'إضافة منتج جديد';
+            document.getElementById('productId').value = '';
+            document.getElementById('productName').value = '';
+            document.getElementById('productPrice').value = '';
+            document.getElementById('productImage').value = '';
+        }
+
+        window.deleteProduct = async function (id) {
+            await deleteDoc(doc(db, "products", id));
+            alert('تم حذف المنتج');
+            displayProducts();
+        };
+    </script>
+</body>
+</html>

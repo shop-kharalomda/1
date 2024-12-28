@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عرض الطلبات</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+        }
+        .header {
+            background-color: #333;
+            color: white;
+            padding: 10px 0;
+        }
+        nav a {
+            color: white;
+            margin: 0 10px;
+            text-decoration: none;
+        }
+        .orders-list {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .order-item {
+            padding: 15px;
+            border-bottom: 1px solid #ccc;
+            position: relative;
+        }
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        .order-item h3 {
+            margin: 0;
+            font-size: 20px;
+        }
+        .order-item p {
+            margin: 5px 0;
+        }
+        .order-item ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .order-item ul li {
+            margin: 5px 0;
+        }
+        .order-item .total-price {
+            font-weight: bold;
+            color: #333;
+        }
+        .delete-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: red;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>عرض طلبات المتجر</h1>
+        <nav>
+            <a href="logout.html">تسجيل الخروج</a>
+            <a href="admin-products.html">إدارة المنتجات</a>
+        </nav>
+    </header>
+
+    <section class="orders-list" id="ordersList">
+        <h2>الطلبات السابقة</h2>
+        <!-- سيتم ملء هذه المنطقة بالطلبات عبر جافا سكربت -->
+    </section>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCs7j4K_Ds1eWBWm_Kf2x5WoUXKcxXo1e4",
+            authDomain: "kokooo-243be.firebaseapp.com",
+            projectId: "kokooo-243be",
+            storageBucket: "kokooo-243be.firebasestorage.app",
+            messagingSenderId: "348661733475",
+            appId: "1:348661733475:web:e0c202f269a308bd0fc056",
+            measurementId: "G-9G479CQ2N7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.onload = displayOrders;
+
+        async function displayOrders() {
+            const ordersList = document.getElementById('ordersList');
+            ordersList.innerHTML = ''; // مسح القائمة قبل التحديث
+
+            const querySnapshot = await getDocs(collection(db, "orders"));
+            if (querySnapshot.empty) {
+                ordersList.innerHTML = '<p>لا توجد طلبات حالياً.</p>';
+                return;
+            }
+
+            querySnapshot.forEach((doc) => {
+                const order = doc.data();
+                const orderDate = order.date.toDate();
+                const dayOfWeek = orderDate.toLocaleString('ar-EG', { weekday: 'long' }); // اليوم الأسبوعي بالعربية
+                const fullDate = orderDate.toLocaleString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }); // التاريخ باليوم والشهر والسنة
+                const time = orderDate.toLocaleString('ar-EG', { hour: '2-digit', minute: '2-digit' }); // الوقت بالساعات والدقائق
+
+                const orderElement = document.createElement('div');
+                orderElement.classList.add('order-item');
+                orderElement.innerHTML = `
+                    <h3>رقم الطلب: ${doc.id}</h3>
+                    <p><strong>الاسم:</strong> ${order.name}</p>
+                    <p><strong>رقم الهاتف:</strong> ${order.phone}</p>
+                    <p><strong>العنوان:</strong> ${order.address}</p>
+                    <h4>تفاصيل المنتجات:</h4>
+                    <ul>
+                        ${order.items.map(item => `
+                            <li>${item.name} - ${item.quantity} كيلو - ${item.totalPrice} جنيه</li>
+                        `).join('')}
+                    </ul>
+                    <p class="total-price"><strong>المجموع: ${order.totalPrice} جنيه</strong></p>
+                    <p><strong>تاريخ الطلب:</strong> ${dayOfWeek}, ${fullDate} - ${time}</p>
+                    <button class="delete-button">حذف الطلب</button>
+                `;
+                ordersList.appendChild(orderElement);
+
+                // إضافة مستمع الحدث للزر
+                const deleteButton = orderElement.querySelector('.delete-button');
+                deleteButton.addEventListener('click', () => deleteOrder(doc.id));
+            });
+        }
+
+        async function deleteOrder(orderId) {
+            try {
+                const orderRef = doc(db, "orders", orderId); // تحديد الطلب باستخدام معرفه
+                await deleteDoc(orderRef); // حذف الطلب من قاعدة البيانات
+                alert("تم حذف الطلب بنجاح.");
+                displayOrders(); // تحديث العرض بعد الحذف
+            } catch (error) {
+                alert("فشل حذف الطلب: " + error.message); // عرض رسالة الخطأ إذا فشل الحذف
+            }
+        }
+    </script>
+
+</body>
+</html>

@@ -105,8 +105,15 @@
         <form id="productForm">
             <input type="hidden" id="productId">
             <input type="text" id="productName" placeholder="اسم المنتج" required><br><br>
-            <input type="number" id="productPrice" placeholder="سعر الكيلو (بالجنيه)" required><br><br>
+            <input type="number" id="productPrice" placeholder="سعر الكيلو أو الوحدة" required><br><br>
             <input type="file" id="productImage" accept="image/*" required><br><br>
+            
+            <label for="sellingType">نوع البيع:</label>
+            <select id="sellingType" required>
+                <option value="weight">بالوزن</option>
+                <option value="quantity">بالعدد</option>
+            </select><br><br>
+
             <button type="submit">حفظ المنتج</button>
         </form>
     </section>
@@ -144,12 +151,16 @@
                 const product = docSnap.data();
                 const productItem = document.createElement('div');
                 productItem.classList.add('product-item');
+
+                // التحقق من نوع البيع (بالوزن أو بالعدد)
+                const priceLabel = product.sellingType === 'weight' ? 'سعر الكيلو' : 'سعر الوحدة';
+                
                 productItem.innerHTML = `
                     <h3>${product.name}</h3>
-                    <p>سعر الكيلو: ${product.price} جنيه</p>
+                    <p>${priceLabel}: ${product.price} جنيه</p>
                     ${product.image ? `<img src="${product.image}" alt="${product.name}">` : ''}
                     <div class="buttons-container">
-                        <button class="edit-btn" onclick="editProduct('${docSnap.id}', '${product.name}', ${product.price}, '${product.image || ''}')">تعديل</button>
+                        <button class="edit-btn" onclick="editProduct('${docSnap.id}', '${product.name}', ${product.price}, '${product.image || ''}', '${product.sellingType}')">تعديل</button>
                         <button class="delete-btn" onclick="deleteProduct('${docSnap.id}')">حذف</button>
                     </div>
                 `;
@@ -165,6 +176,7 @@
             const productName = document.getElementById('productName').value;
             const productPrice = document.getElementById('productPrice').value;
             const productImageInput = document.getElementById('productImage').files[0];
+            const sellingType = document.getElementById('sellingType').value;
 
             if (!productName || !productPrice || !productImageInput) {
                 alert("يرجى ملء جميع الحقول المطلوبة.");
@@ -174,6 +186,7 @@
             const productData = {
                 name: productName,
                 price: parseFloat(productPrice),
+                sellingType: sellingType,
             };
 
             const reader = new FileReader();
@@ -193,12 +206,13 @@
             reader.readAsDataURL(productImageInput);
         });
 
-        window.editProduct = function (id, name, price, image) {
+        window.editProduct = function (id, name, price, image, sellingType) {
             document.getElementById('formTitle').innerText = 'تعديل المنتج';
             document.getElementById('productId').value = id;
             document.getElementById('productName').value = name;
             document.getElementById('productPrice').value = price;
             document.getElementById('productImage').value = '';
+            document.getElementById('sellingType').value = sellingType;
         };
 
         function resetForm() {
@@ -207,6 +221,7 @@
             document.getElementById('productName').value = '';
             document.getElementById('productPrice').value = '';
             document.getElementById('productImage').value = '';
+            document.getElementById('sellingType').value = 'weight';
         }
 
         window.deleteProduct = async function (id) {

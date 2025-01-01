@@ -63,6 +63,20 @@
             right: 10px;
             color: red;
             cursor: pointer;
+            background-color: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .copy-coordinates-button {
+            background-color: #007bff;
+            color: white;
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            border-radius: 3px;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -117,29 +131,56 @@
                 const fullDate = orderDate.toLocaleString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }); // التاريخ باليوم والشهر والسنة
                 const time = orderDate.toLocaleString('ar-EG', { hour: '2-digit', minute: '2-digit' }); // الوقت بالساعات والدقائق
 
+                // التأكد من وجود إحداثيات
+                const coordinates = order.coordinates || null; // إذا كانت الإحداثيات غير موجودة، ستكون القيمة null
+
                 const orderElement = document.createElement('div');
                 orderElement.classList.add('order-item');
                 orderElement.innerHTML = `
                     <h3>رقم الطلب: ${doc.id}</h3>
                     <p><strong>الاسم:</strong> ${order.name}</p>
                     <p><strong>رقم الهاتف:</strong> ${order.phone}</p>
-                    <p><strong>العنوان:</strong> ${order.address}</p>
+                    <p><strong>العنوان:</strong> ${order.address} 
+                    ${coordinates ? `<button class="copy-coordinates-button" data-coordinates="${coordinates.lat}, ${coordinates.lng}">نسخ الإحداثيات</button>` : ''}
+                    </p>
                     <h4>تفاصيل المنتجات:</h4>
                     <ul>
-                        ${order.items.map(item => `
-                            <li>${item.name} - ${item.quantity} كيلو - ${item.totalPrice} جنيه</li>
-                        `).join('')}
+                        ${order.items.map(item => {
+                            let quantityText = '';
+                            if (item.sellingType === 'weight') {
+                                quantityText = `${item.quantity} كيلو`;
+                            } else if (item.sellingType === 'quantity') {
+                                quantityText = `${item.quantity} ${item.quantity > 1 ? 'وحدات' : 'وحدة'}`;
+                            }
+                            return `<li>${item.name} - ${quantityText} - ${item.totalPrice} جنيه</li>`;
+                        }).join('')}
                     </ul>
                     <p class="total-price"><strong>المجموع: ${order.totalPrice} جنيه</strong></p>
                     <p><strong>تاريخ الطلب:</strong> ${dayOfWeek}, ${fullDate} - ${time}</p>
-                    <button class="delete-button">حذف الطلب</button>
+                    <button class="delete-button" data-order-id="${doc.id}">حذف الطلب</button>
                 `;
                 ordersList.appendChild(orderElement);
 
-                // إضافة مستمع الحدث للزر
+                // إضافة مستمع الحدث للزر نسخ الإحداثيات
+                if (coordinates) {
+                    const copyButton = orderElement.querySelector('.copy-coordinates-button');
+                    copyButton.addEventListener('click', () => copyCoordinates(copyButton.dataset.coordinates));
+                }
+
+                // إضافة مستمع الحدث للزر حذف الطلب
                 const deleteButton = orderElement.querySelector('.delete-button');
-                deleteButton.addEventListener('click', () => deleteOrder(doc.id));
+                deleteButton.addEventListener('click', () => deleteOrder(deleteButton.dataset.orderId));
             });
+        }
+
+        function copyCoordinates(coordinatesText) {
+            navigator.clipboard.writeText(coordinatesText)
+                .then(() => {
+                    alert("تم نسخ الإحداثيات إلى الحافظة.");
+                })
+                .catch((error) => {
+                    alert("فشل نسخ الإحداثيات: " + error.message);
+                });
         }
 
         async function deleteOrder(orderId) {
